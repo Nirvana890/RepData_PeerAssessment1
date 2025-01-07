@@ -1,57 +1,62 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
+author: "Nirvana Kistow"
 output: 
   html_document:
     keep_md: true
 ---
-
+```{r}
+knitr::opts_chunk$set(fig.path = "figures/")
+```
 
 ## Loading and preprocessing the data
 First we will load the data into r using read.csv
-```{r}
+```{r echo=TRUE}
 activity <- read.csv("activity.csv")
 head(activity)
 ```
 From the sample of the first few rows in the activity dataset we can see that ther are NA values in the steps columns. We will remove the NA values. 
 
-```{r}
-activity_clean = na.omit(activity)
-head(activity_clean)
+```{r echo=TRUE}
+activity_cleaned = na.omit(activity)
+head(activity_cleaned)
 
 ```
-from the first few rows headed from the activity_cleandataset we can see the NA values have been removed.
+from the first few rows headed from the activity_cleaned dataset we can see the NA values have been removed.
 ## What is mean total number of steps taken per day?
 to answer the question 'What is mean total number of steps taken per day?' I will first calculate the the total number of steps for each day
-**Calculate the total number of steps per day
+**Calculate the number of steps per day
 ```{r}
 library(ggplot2)
-totaldailysteps = aggregate(steps~date, activity_clean, sum)
-head(totaldailysteps)
+```
+```{r}
+stepsperday = aggregate(steps~date, activity_cleaned, sum)
+head(stepsperday)
 
 ```
 Create a histogram of the total steps per day
 ```{r}
-hist(totaldailysteps$steps, main = "Total Daily Steps Taken Each Day", xlab = "Number of Steps", col = "blue")
+hist(stepsperday$steps, main = "Total Daily Steps Taken Each Day", xlab = "Number of Steps", col = "green")
 
 ```
 Calculate and report the mean and median of the total steps taken per day
 ```{r}
-Mean_Steps = mean(totaldailysteps$steps)
+Mean_Steps = mean(stepsperday$steps)
 print(Mean_Steps)
 
 ```
 from the output we can see the mean is 10766.19
 ```{r}
-Median_Steps = median(totaldailysteps$steps)
+Median_Steps = median(stepsperday$steps)
 Median_Steps
 ```
 from the output we can see the median is 10765
 ## What is the average daily activity pattern?
 Next, is to make a time series plot of the 5 min intervals and average steps taken per day. 
 ```{r}
-AverageSteps = aggregate(steps ~ interval, activity_clean, mean)
+AverageSteps = aggregate(steps ~ interval, activity_cleaned, mean)
 
-plot(y= AverageSteps$steps, x= AverageSteps$interval,type = "l",  main = "Time Series of Step over intervals", xlab = "Intervals (5 mins)", ylab = "Amount of Steps", col = "blue" )
+plot(y= AverageSteps$steps, x= AverageSteps$interval,type = "l",  main = "Time Series of Step over intervals", xlab = "Intervals (5 mins)", ylab = "Amount of Steps", col = "green" )
 ```
 Next, we will calculate the interval with the maximum number of steps
 ```{r}
@@ -78,8 +83,16 @@ Devise a strategy for filling in all of the missing values in the dataset. The s
 - to fill these missing of the steps we will use the mean of each interval
 
 ```{r}
-fill_activity <- activity
-fill_activity$steps <- ifelse(is.na(fill_activity$steps) == TRUE, AverageSteps$steps[AverageSteps$interval %in% fill_activity$interval], fill_activity$steps)
+library(dplyr)
+
+# Fill missing steps with average steps for the corresponding interval
+fill_activity <- activity %>%
+  left_join(AverageSteps, by = "interval") %>%
+  mutate(
+    steps = ifelse(is.na(steps.x), steps.y, steps.x) # Fill missing steps
+  ) %>%
+  select(-steps.x, -steps.y) # Remove unnecessary column
+
 head(fill_activity)
 ```
 
@@ -91,21 +104,21 @@ head(fill_activity)
 
 Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. 
 ```{r}
-totaldailysteps2 = aggregate(steps~date, fill_activity, sum)
+totaldailysteps = aggregate(steps~date, fill_activity, sum)
 
-hist(totaldailysteps2$steps, main = "Total Daily Steps Taken Each Day", xlab = "Number of Steps", col = "blue")
+hist(totaldailysteps$steps, main = "Total Daily Steps Taken Each Day", xlab = "Number of Steps", col = "green")
 
 
 ```
 
 next we will calculate the mean and median
 ```{r}
-Mean_Steps2 = mean(totaldailysteps2$steps)
+Mean_Steps2 = mean(totaldailysteps$steps)
 print(Mean_Steps2)
 ```
 
 ```{r}
-Median_Steps2 = median(totaldailysteps2$steps)
+Median_Steps2 = median(totaldailysteps$steps)
 Median_Steps2
 ```
 
@@ -120,30 +133,46 @@ What is the impact of imputing missing data on the estimates of the total daily 
 Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
 
 ```{r}
-fill_activity$date = as.Date(strptime(activity$date, format="%Y-%m-%d"))
-fill_activity$day = weekdays(fill_activity$date)
-fill_activity$weekday = as.character(rep(0, times=17568))
-for(x in 1:17568) {
-    if(fill_activity[x, 4] %in% c("Saturday", "Sunday")) {
-        fill_activity[x, 5] <- "weekend"
-    } else {
-        fill_activity[x, 5] <- "weekday"
-    }
-}
-fill_activity$weekday <- factor(fill_activity$weekday)
+fill_activity <- activity_cleaned %>%
+  mutate(
+    date = as.Date(date, format = "%Y-%m-%d"), # Convert date to Date format
+    day = weekdays(date),                     # Get weekday name
+    weekday = ifelse(day %in% c("Saturday", "Sunday"), "weekend", "weekday") # Classify as weekend or weekday
+  ) %>%
+  mutate(weekday = factor(weekday)) # Convert to factor
+
 head(fill_activity)
 ```
 Finally, we will create the panel plot for the weekdays and weekends
-```{r}
-Weekday = fill_activity[fill_activity$weekday == "weekday",]
-Weekend = fill_activity[fill_activity$weekday == "weekend",]
+```{r, fig.width=8, fig.height=6}
+# Split data into weekday and weekend
+Weekday <- fill_activity[fill_activity$weekday == "weekday", ]
+Weekend <- fill_activity[fill_activity$weekday == "weekend", ]
 
-Average_weekday = aggregate(steps~interval, Weekday, mean)
-Average_weekend = aggregate(steps~interval, Weekend, mean)
+# Calculate average steps by interval for weekdays and weekends
+Average_weekday <- aggregate(steps ~ interval, data = Weekday, FUN = mean)
+Average_weekend <- aggregate(steps ~ interval, data = Weekend, FUN = mean)
 
-par(mfrow=c(2, 1), mar=c(4, 4.1, 3, 2.1))
-plot(Average_weekday$interval, Average_weekday$steps, type = "l", main= "Weekday Time Series", xlab="Interval(5 mins)", ylab = "Steps", col = "green")
-plot(Average_weekend$interval, Average_weekend$steps, type = "l", main= "Weekend Time Series", xlab="Interval(5 mins)", ylab = "Steps", col = "blue")
+# Set up the panel plot layout
+par(mfrow = c(2, 1), mar = c(4, 4, 3, 2)) # Adjust margins for better spacing
+
+# Weekday time series plot
+plot(
+  Average_weekday$interval, Average_weekday$steps, 
+  type = "l", col = "green",
+  main = "Weekday Time Series",
+  xlab = "Interval (5 mins)", 
+  ylab = "Average Steps"
+)
+
+# Weekend time series plot
+plot(
+  Average_weekend$interval, Average_weekend$steps, 
+  type = "l", col = "blue",
+  main = "Weekend Time Series",
+  xlab = "Interval (5 mins)", 
+  ylab = "Average Steps"
+)
 
 ```
 

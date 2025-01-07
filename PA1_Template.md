@@ -1,10 +1,14 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
+author: "Nirvana Kistow"
 output: 
   html_document:
     keep_md: true
 ---
 
+``` r
+knitr::opts_chunk$set(fig.path = "figures/")
+```
 
 ## Loading and preprocessing the data
 First we will load the data into r using read.csv
@@ -27,8 +31,8 @@ From the sample of the first few rows in the activity dataset we can see that th
 
 
 ``` r
-activity_clean = na.omit(activity)
-head(activity_clean)
+activity_cleaned = na.omit(activity)
+head(activity_cleaned)
 ```
 
 ```
@@ -40,10 +44,10 @@ head(activity_clean)
 ## 293     0 2012-10-02       20
 ## 294     0 2012-10-02       25
 ```
-from the first few rows headed from the activity_cleandataset we can see the NA values have been removed.
+from the first few rows headed from the activity_cleaned dataset we can see the NA values have been removed.
 ## What is mean total number of steps taken per day?
 to answer the question 'What is mean total number of steps taken per day?' I will first calculate the the total number of steps for each day
-**Calculate the total number of steps per day
+**Calculate the number of steps per day
 
 ``` r
 library(ggplot2)
@@ -54,8 +58,8 @@ library(ggplot2)
 ```
 
 ``` r
-totaldailysteps = aggregate(steps~date, activity_clean, sum)
-head(totaldailysteps)
+stepsperday = aggregate(steps~date, activity_cleaned, sum)
+head(stepsperday)
 ```
 
 ```
@@ -70,14 +74,14 @@ head(totaldailysteps)
 Create a histogram of the total steps per day
 
 ``` r
-hist(totaldailysteps$steps, main = "Total Daily Steps Taken Each Day", xlab = "Number of Steps", col = "blue")
+hist(stepsperday$steps, main = "Total Daily Steps Taken Each Day", xlab = "Number of Steps", col = "green")
 ```
 
-![](PA1_Template_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+![](figures/unnamed-chunk-6-1.png)<!-- -->
 Calculate and report the mean and median of the total steps taken per day
 
 ``` r
-Mean_Steps = mean(totaldailysteps$steps)
+Mean_Steps = mean(stepsperday$steps)
 print(Mean_Steps)
 ```
 
@@ -87,7 +91,7 @@ print(Mean_Steps)
 from the output we can see the mean is 10766.19
 
 ``` r
-Median_Steps = median(totaldailysteps$steps)
+Median_Steps = median(stepsperday$steps)
 Median_Steps
 ```
 
@@ -99,12 +103,12 @@ from the output we can see the median is 10765
 Next, is to make a time series plot of the 5 min intervals and average steps taken per day. 
 
 ``` r
-AverageSteps = aggregate(steps ~ interval, activity_clean, mean)
+AverageSteps = aggregate(steps ~ interval, activity_cleaned, mean)
 
-plot(y= AverageSteps$steps, x= AverageSteps$interval,type = "l",  main = "Time Series of Step over intervals", xlab = "Intervals (5 mins)", ylab = "Amount of Steps", col = "blue" )
+plot(y= AverageSteps$steps, x= AverageSteps$interval,type = "l",  main = "Time Series of Step over intervals", xlab = "Intervals (5 mins)", ylab = "Amount of Steps", col = "green" )
 ```
 
-![](PA1_Template_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
+![](figures/unnamed-chunk-9-1.png)<!-- -->
 Next, we will calculate the interval with the maximum number of steps
 
 ``` r
@@ -161,19 +165,50 @@ Devise a strategy for filling in all of the missing values in the dataset. The s
 
 
 ``` r
-fill_activity <- activity
-fill_activity$steps <- ifelse(is.na(fill_activity$steps) == TRUE, AverageSteps$steps[AverageSteps$interval %in% fill_activity$interval], fill_activity$steps)
+library(dplyr)
+```
+
+```
+## Warning: package 'dplyr' was built under R version 4.3.3
+```
+
+```
+## 
+## Attaching package: 'dplyr'
+```
+
+```
+## The following objects are masked from 'package:stats':
+## 
+##     filter, lag
+```
+
+```
+## The following objects are masked from 'package:base':
+## 
+##     intersect, setdiff, setequal, union
+```
+
+``` r
+# Fill missing steps with average steps for the corresponding interval
+fill_activity <- activity %>%
+  left_join(AverageSteps, by = "interval") %>%
+  mutate(
+    steps = ifelse(is.na(steps.x), steps.y, steps.x) # Fill missing steps
+  ) %>%
+  select(-steps.x, -steps.y) # Remove unnecessary column
+
 head(fill_activity)
 ```
 
 ```
-##       steps       date interval
-## 1 1.7169811 2012-10-01        0
-## 2 0.3396226 2012-10-01        5
-## 3 0.1320755 2012-10-01       10
-## 4 0.1509434 2012-10-01       15
-## 5 0.0754717 2012-10-01       20
-## 6 2.0943396 2012-10-01       25
+##         date interval     steps
+## 1 2012-10-01        0 1.7169811
+## 2 2012-10-01        5 0.3396226
+## 3 2012-10-01       10 0.1320755
+## 4 2012-10-01       15 0.1509434
+## 5 2012-10-01       20 0.0754717
+## 6 2012-10-01       25 2.0943396
 ```
 
 Create a new dataset that is equal to the original dataset but with the missing data filled in.
@@ -184,29 +219,29 @@ head(fill_activity)
 ```
 
 ```
-##       steps       date interval
-## 1 1.7169811 2012-10-01        0
-## 2 0.3396226 2012-10-01        5
-## 3 0.1320755 2012-10-01       10
-## 4 0.1509434 2012-10-01       15
-## 5 0.0754717 2012-10-01       20
-## 6 2.0943396 2012-10-01       25
+##         date interval     steps
+## 1 2012-10-01        0 1.7169811
+## 2 2012-10-01        5 0.3396226
+## 3 2012-10-01       10 0.1320755
+## 4 2012-10-01       15 0.1509434
+## 5 2012-10-01       20 0.0754717
+## 6 2012-10-01       25 2.0943396
 ```
 
 Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. 
 
 ``` r
-totaldailysteps2 = aggregate(steps~date, fill_activity, sum)
+totaldailysteps = aggregate(steps~date, fill_activity, sum)
 
-hist(totaldailysteps2$steps, main = "Total Daily Steps Taken Each Day", xlab = "Number of Steps", col = "blue")
+hist(totaldailysteps$steps, main = "Total Daily Steps Taken Each Day", xlab = "Number of Steps", col = "green")
 ```
 
-![](PA1_Template_files/figure-html/unnamed-chunk-13-1.png)<!-- -->
+![](figures/unnamed-chunk-15-1.png)<!-- -->
 
 next we will calculate the mean and median
 
 ``` r
-Mean_Steps2 = mean(totaldailysteps2$steps)
+Mean_Steps2 = mean(totaldailysteps$steps)
 print(Mean_Steps2)
 ```
 
@@ -216,7 +251,7 @@ print(Mean_Steps2)
 
 
 ``` r
-Median_Steps2 = median(totaldailysteps2$steps)
+Median_Steps2 = median(totaldailysteps$steps)
 Median_Steps2
 ```
 
@@ -236,43 +271,59 @@ Create a new factor variable in the dataset with two levels – “weekday” an
 
 
 ``` r
-fill_activity$date = as.Date(strptime(activity$date, format="%Y-%m-%d"))
-fill_activity$day = weekdays(fill_activity$date)
-fill_activity$weekday = as.character(rep(0, times=17568))
-for(x in 1:17568) {
-    if(fill_activity[x, 4] %in% c("Saturday", "Sunday")) {
-        fill_activity[x, 5] <- "weekend"
-    } else {
-        fill_activity[x, 5] <- "weekday"
-    }
-}
-fill_activity$weekday <- factor(fill_activity$weekday)
+fill_activity <- activity_cleaned %>%
+  mutate(
+    date = as.Date(date, format = "%Y-%m-%d"), # Convert date to Date format
+    day = weekdays(date),                     # Get weekday name
+    weekday = ifelse(day %in% c("Saturday", "Sunday"), "weekend", "weekday") # Classify as weekend or weekday
+  ) %>%
+  mutate(weekday = factor(weekday)) # Convert to factor
+
 head(fill_activity)
 ```
 
 ```
-##       steps       date interval    day weekday
-## 1 1.7169811 2012-10-01        0 Monday weekday
-## 2 0.3396226 2012-10-01        5 Monday weekday
-## 3 0.1320755 2012-10-01       10 Monday weekday
-## 4 0.1509434 2012-10-01       15 Monday weekday
-## 5 0.0754717 2012-10-01       20 Monday weekday
-## 6 2.0943396 2012-10-01       25 Monday weekday
+##     steps       date interval     day weekday
+## 289     0 2012-10-02        0 Tuesday weekday
+## 290     0 2012-10-02        5 Tuesday weekday
+## 291     0 2012-10-02       10 Tuesday weekday
+## 292     0 2012-10-02       15 Tuesday weekday
+## 293     0 2012-10-02       20 Tuesday weekday
+## 294     0 2012-10-02       25 Tuesday weekday
 ```
 Finally, we will create the panel plot for the weekdays and weekends
 
 ``` r
-Weekday = fill_activity[fill_activity$weekday == "weekday",]
-Weekend = fill_activity[fill_activity$weekday == "weekend",]
+# Split data into weekday and weekend
+Weekday <- fill_activity[fill_activity$weekday == "weekday", ]
+Weekend <- fill_activity[fill_activity$weekday == "weekend", ]
 
-Average_weekday = aggregate(steps~interval, Weekday, mean)
-Average_weekend = aggregate(steps~interval, Weekend, mean)
+# Calculate average steps by interval for weekdays and weekends
+Average_weekday <- aggregate(steps ~ interval, data = Weekday, FUN = mean)
+Average_weekend <- aggregate(steps ~ interval, data = Weekend, FUN = mean)
 
-par(mfrow=c(2, 1), mar=c(4, 4.1, 3, 2.1))
-plot(Average_weekday$interval, Average_weekday$steps, type = "l", main= "Weekday Time Series", xlab="Interval(5 mins)", ylab = "Steps", col = "green")
-plot(Average_weekend$interval, Average_weekend$steps, type = "l", main= "Weekend Time Series", xlab="Interval(5 mins)", ylab = "Steps", col = "blue")
+# Set up the panel plot layout
+par(mfrow = c(2, 1), mar = c(4, 4, 3, 2)) # Adjust margins for better spacing
+
+# Weekday time series plot
+plot(
+  Average_weekday$interval, Average_weekday$steps, 
+  type = "l", col = "green",
+  main = "Weekday Time Series",
+  xlab = "Interval (5 mins)", 
+  ylab = "Average Steps"
+)
+
+# Weekend time series plot
+plot(
+  Average_weekend$interval, Average_weekend$steps, 
+  type = "l", col = "blue",
+  main = "Weekend Time Series",
+  xlab = "Interval (5 mins)", 
+  ylab = "Average Steps"
+)
 ```
 
-![](PA1_Template_files/figure-html/unnamed-chunk-17-1.png)<!-- -->
+![](figures/unnamed-chunk-19-1.png)<!-- -->
 
 
